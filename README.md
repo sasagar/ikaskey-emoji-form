@@ -54,12 +54,13 @@ wrangler secret put MANTARO_TOKEN          # write:admin:emoji + write:drive 必
 wrangler secret put DISCORD_WEBHOOK_URL
 wrangler secret put SESSION_SECRET         # openssl rand -hex 32
 
-# D1 マイグレーション (Phase 2 で追加)
-# wrangler d1 execute ikaskey-emoji-form --file=./migrations/0001_init.sql
+# D1 マイグレーション (リモート / ローカル両方に適用)
+pnpm migrate:remote    # 本番 (Cloudflare 上の D1) に適用
+pnpm migrate:local     # wrangler dev 用のローカル SQLite に適用 ← pnpm start の前に必須
 
 # 開発
-pnpm dev          # Waku dev server
-pnpm start        # wrangler dev (Workers ローカル実行)
+pnpm dev          # Waku dev server (Workers bindings なし)
+pnpm start        # build + wrangler dev (Workers ローカル実行、bindings 有効)
 
 # デプロイ
 pnpm build && wrangler deploy
