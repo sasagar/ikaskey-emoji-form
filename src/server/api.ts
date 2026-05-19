@@ -49,6 +49,22 @@ export function buildApi() {
   // --- 申請 ---
   app.post('/api/submit', handleSubmit);
 
+  // --- 申請者: 自分の申請履歴 ---
+  app.get('/api/my/applications', async (c) => {
+    const sess = await readSession(c);
+    if (!sess) return c.json({ error: 'unauthorized' }, 401);
+    const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10) || 50, 200);
+    const rs = await c.env.DB.prepare(
+      `SELECT id, name, category, category_is_new, aliases, comment, mime_type, file_size,
+              status, decided_at, decided_by_username, reject_reason,
+              registered_emoji_id, registered_emoji_name, created_at
+       FROM applications WHERE applicant_id = ? ORDER BY created_at DESC LIMIT ?`,
+    )
+      .bind(sess.userId, limit)
+      .all();
+    return c.json({ applications: rs.results ?? [] });
+  });
+
   // --- モデレーター ---
   app.route('/', buildAdminApi());
 

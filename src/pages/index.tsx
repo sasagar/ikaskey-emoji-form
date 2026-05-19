@@ -16,7 +16,12 @@ export default async function HomePage() {
         >
           絵文字を申請する
         </a>
-        <a href="/api/me" className="text-sm underline text-gray-600">ログイン状態</a>
+        <a
+          href="/my"
+          className="inline-block rounded border border-gray-300 bg-white px-6 py-2 font-medium text-gray-700 hover:bg-gray-50"
+        >
+          自分の申請を見る
+        </a>
       </div>
       <p className="text-xs text-gray-400">
         モデレーターの方は <a href="/admin" className="underline">/admin</a> から申請を確認できます。

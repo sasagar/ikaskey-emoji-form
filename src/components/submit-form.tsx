@@ -82,20 +82,28 @@ export function SubmitForm() {
         <p className="text-sm text-green-700">
           <code>:{state.name}:</code> の申請がモデレーターに通知されました。採用 / 却下の判断が出るまでお待ちください。
         </p>
-        <button
-          onClick={() => {
-            setName('');
-            setCategory('');
-            setIsNewCategory(false);
-            setAliases('');
-            setComment('');
-            setFile(null);
-            setState({ kind: 'idle' });
-          }}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          続けて別の絵文字を申請する
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setName('');
+              setCategory('');
+              setIsNewCategory(false);
+              setAliases('');
+              setComment('');
+              setFile(null);
+              setState({ kind: 'idle' });
+            }}
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          >
+            続けて別の絵文字を申請する
+          </button>
+          <a
+            href="/my"
+            className="rounded border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50"
+          >
+            自分の申請一覧
+          </a>
+        </div>
       </div>
     );
   }
