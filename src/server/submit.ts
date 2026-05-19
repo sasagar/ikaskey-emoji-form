@@ -8,6 +8,7 @@ import {
 } from './validate';
 import { notifyDiscord } from './discord';
 import { submittedDiscord } from './messages';
+import { emojiNameExists } from './emoji-map';
 
 /**
  * POST /api/submit
@@ -79,6 +80,22 @@ async function handleUploadSubmit(
   });
   if (errors.length > 0) {
     return c.json({ ok: false, errors }, 400);
+  }
+
+  // 同名チェック (ikaskey 本体にすでに存在する name は弾く)
+  if (await emojiNameExists(c.env, name)) {
+    return c.json(
+      {
+        ok: false,
+        errors: [
+          {
+            field: 'name',
+            message: `絵文字名 :${name}: はすでにいかすきーに存在します。別の名前にしてください。`,
+          },
+        ],
+      },
+      400,
+    );
   }
 
   // R2 に保存 (バイト列を一度だけ読んで再利用)
@@ -186,6 +203,22 @@ async function handleRemoteSubmit(
   const aliases = parseAliases(aliasesRaw);
   if (errors.length > 0) {
     return c.json({ ok: false, errors }, 400);
+  }
+
+  // 同名チェック (ikaskey 本体にすでに存在する name は弾く)
+  if (await emojiNameExists(c.env, name)) {
+    return c.json(
+      {
+        ok: false,
+        errors: [
+          {
+            field: 'name',
+            message: `絵文字名 :${name}: はすでにいかすきーに存在します。別の名前にしてください。`,
+          },
+        ],
+      },
+      400,
+    );
   }
 
   const insert = await c.env.DB.prepare(

@@ -126,6 +126,21 @@ export function AdminDetail({ id }: { id: number }) {
     if (!confirm(`本当に :${name}: を採用しますか?\n\n(mantaro のドライブに転送 → 登録 → 申請者通知が走ります)`)) return;
     setBusy('approve');
     setActionMsg(null);
+
+    // 採用前にフォームの編集内容を必ず保存 (押し忘れ防止)
+    const saveRes = await fetch(`/api/admin/applications/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, category, categoryIsNew, aliasesRaw, comment }),
+    });
+    const saveD = (await saveRes.json()) as { application?: Application; error?: string };
+    if (!saveRes.ok || !saveD.application) {
+      setBusy(null);
+      setMsg(`編集内容の保存に失敗したため採用を中止しました: ${saveD.error ?? saveRes.status}`, 'error');
+      return;
+    }
+    setApp(saveD.application);
+
     const r = await fetch(`/api/admin/applications/${id}/approve`, { method: 'POST' });
     const d = (await r.json()) as { ok?: boolean; emoji?: { name: string; id: string }; error?: string; detail?: string };
     setBusy(null);
@@ -168,7 +183,7 @@ export function AdminDetail({ id }: { id: number }) {
       <section className="card p-5 sm:p-6">
         <div className="flex gap-5 sm:gap-6 flex-col sm:flex-row">
           <div className="shrink-0 mx-auto sm:mx-0">
-            {!decided || app.source_type === 'remote_copy' ? (
+            {app.status !== 'rejected' ? (
               <a
                 href={`/api/admin/applications/${id}/image`}
                 target="_blank"
@@ -189,17 +204,27 @@ export function AdminDetail({ id }: { id: number }) {
                     🌐
                   </span>
                 )}
+                {app.status === 'approved' && (
+                  <span
+                    title="ikaskey 本体に登録済"
+                    className="absolute -bottom-1 -right-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--color-approved-bg)] text-[var(--color-approved)] border border-[var(--color-approved)] text-base"
+                  >
+                    ✓
+                  </span>
+                )}
               </a>
             ) : (
               <div className="flex h-40 w-40 sm:h-44 sm:w-44 flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2 text-xs text-[var(--color-text-faint)] text-center gap-1">
                 <span className="text-3xl opacity-50" aria-hidden="true">🗄</span>
-                <span>採用/却下済のため<br />画像は削除されました</span>
+                <span>却下済のため<br />画像は削除されました</span>
               </div>
             )}
             <p className="mt-2 text-xs text-[var(--color-text-faint)] text-center font-mono">
-              {app.source_type === 'remote_copy'
-                ? `🌐 ${app.source_host}`
-                : `${app.mime_type} · ${fmtSize(app.file_size)}`}
+              {app.status === 'approved'
+                ? `✓ ikaskey 本体`
+                : app.source_type === 'remote_copy'
+                  ? `🌐 ${app.source_host}`
+                  : `${app.mime_type} · ${fmtSize(app.file_size)}`}
             </p>
           </div>
 

@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "cf-typegen": "wrangler types",
-    "dev": "waku dev",
-    "build": "waku build",
+    "dev": "node scripts/gen-version.mjs && waku dev",
+    "build": "node scripts/gen-version.mjs && waku build",
     "start": "pnpm build && wrangler dev",
     "start:nobuild": "wrangler dev",
     "migrate:local": "wrangler d1 migrations apply ikaskey-emoji-form --local || wrangler d1 execute ikaskey-emoji-form --local --file=./migrations/0001_init.sql",

@@ -1,3 +1,5 @@
+import { BUILD_VERSION, BUILD_TIME } from '../version';
+
 export const Footer = () => {
   return (
     <footer className="mt-8 border-t border-[var(--color-border)] bg-[var(--color-surface-sunken)]/40">
@@ -32,6 +34,13 @@ export const Footer = () => {
                 Waku
               </a>{' '}
               on Cloudflare Workers
+            </span>
+            <span className="text-[var(--color-text-faint)]">·</span>
+            <span
+              className="font-mono text-[var(--color-text-faint)]"
+              title={`build: ${BUILD_TIME}`}
+            >
+              v {BUILD_VERSION}
             </span>
           </div>
         </div>

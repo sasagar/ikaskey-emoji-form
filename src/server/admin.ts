@@ -15,6 +15,7 @@ import {
   approvedDiscord,
   rejectedDiscord,
 } from './messages';
+import { emojiNameExists } from './emoji-map';
 
 export type ApplicationRow = {
   id: number;
@@ -82,14 +83,21 @@ export function buildAdminApi() {
     return c.json({ application: row });
   });
 
-  // ---- 画像 (R2 から stream、または remote の preview にリダイレクト) ----
+  // ---- 画像 (採用済は ikaskey 本体の emoji、pending は R2 / remote preview) ----
   app.get('/api/admin/applications/:id/image', async (c) => {
     const mod = await ensureModerator(c);
     if (mod instanceof Response) return mod;
     const id = parseInt(c.req.param('id'), 10);
     const row = await fetchApplication(c.env, id);
     if (!row) return c.text('not found', 404);
-    // remote_copy はオリジナル URL に redirect (Referer は no-referrer 推奨)
+    // 採用済: ikaskey 本体の emoji URL に redirect (R2 は削除済)
+    if (row.status === 'approved' && row.registered_emoji_name) {
+      return c.redirect(
+        `https://${c.env.MISSKEY_HOST}/emoji/${encodeURIComponent(row.registered_emoji_name)}.webp`,
+        302,
+      );
+    }
+    // remote_copy (pending) はオリジナル URL に redirect (Referer は no-referrer 推奨)
     if (row.source_type === 'remote_copy') {
       if (row.source_remote_url) return c.redirect(row.source_remote_url, 302);
       return c.text('no remote url', 404);
@@ -102,6 +110,67 @@ export function buildAdminApi() {
         'Content-Type': row.mime_type,
         'Cache-Control': 'private, max-age=60',
       },
+    });
+  });
+
+  // ---- バルク (採用 / 却下 / 削除) ----
+  //
+  // 注意: /:id より前に登録すること!
+  // Hono 4 の SmartRouter は `POST /applications/bulk` を `:id='bulk'` で
+  // 拾ってしまい、parseInt('bulk')=NaN で 404 を返す挙動が確認されている。
+  app.post('/api/admin/applications/bulk', async (c) => {
+    const mod = await ensureModerator(c);
+    if (mod instanceof Response) return mod;
+
+    const body = (await c.req.json().catch(() => ({}))) as {
+      ids?: number[];
+      action?: 'approve' | 'reject' | 'delete';
+      reason?: string;
+    };
+    const ids = (body.ids ?? [])
+      .map((n) => Number(n))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (ids.length === 0) return c.json({ error: 'no ids provided' }, 400);
+    if (ids.length > BULK_MAX) {
+      return c.json({ error: `max ${BULK_MAX} per bulk` }, 400);
+    }
+    const action = body.action;
+    if (!['approve', 'reject', 'delete'].includes(action ?? '')) {
+      return c.json({ error: 'invalid action' }, 400);
+    }
+    const reason = (body.reason ?? '').trim() || '(理由未記入)';
+    const origin = new URL(c.req.url).origin;
+
+    const results: { id: number; ok: boolean; error?: string; emojiName?: string }[] = [];
+
+    // 直列実行 (mantaro / D1 への並列ヒットを避け、ログを読みやすくする)
+    // バルク内で連続採用した name は本体側 cache 反映前に衝突するので Set で追跡。
+    const addedNames = new Set<string>();
+    for (const id of ids) {
+      try {
+        if (action === 'approve') {
+          const r = await approveOne(c.env, c.executionCtx, mod, id, origin, addedNames);
+          addedNames.add(r.emoji.name);
+          results.push({ id, ok: true, emojiName: r.emoji.name });
+        } else if (action === 'reject') {
+          await rejectOne(c.env, c.executionCtx, mod, id, reason, origin);
+          results.push({ id, ok: true });
+        } else if (action === 'delete') {
+          await deleteOne(c.env, c.executionCtx, id);
+          results.push({ id, ok: true });
+        }
+      } catch (e) {
+        results.push({ id, ok: false, error: errDetail(e) });
+      }
+    }
+
+    const okCount = results.filter((r) => r.ok).length;
+    return c.json({
+      ok: okCount === results.length,
+      processed: results.length,
+      succeeded: okCount,
+      failed: results.length - okCount,
+      results,
     });
   });
 
@@ -128,6 +197,16 @@ export function buildAdminApi() {
       const n = body.name.trim();
       if (!NAME_PATTERN.test(n)) {
         return c.json({ error: 'invalid name' }, 400);
+      }
+      // 別 name にリネームしようとしている時のみ衝突チェック
+      if (n !== row.name && (await emojiNameExists(c.env, n))) {
+        return c.json(
+          {
+            error: 'name_already_exists',
+            detail: `絵文字名 :${n}: はすでにいかすきーに存在します。別の名前にしてください。`,
+          },
+          409,
+        );
       }
       updates.name = n;
     }
@@ -164,10 +243,10 @@ export function buildAdminApi() {
     const id = parseInt(c.req.param('id'), 10);
     const origin = new URL(c.req.url).origin;
     try {
-      const result = await approveOne(c.env, c.executionCtx, mod, id, origin);
+      const result = await approveOne(c.env, c.executionCtx, mod, id, origin, new Set());
       return c.json({ ok: true, emoji: result.emoji });
     } catch (e) {
-      return c.json({ error: errCode(e), detail: String(e) }, errStatus(e));
+      return c.json({ error: errCode(e), detail: errDetail(e) }, errStatus(e));
     }
   });
 
@@ -200,60 +279,6 @@ export function buildAdminApi() {
     }
   });
 
-  // ---- バルク (採用 / 却下 / 削除) ----
-  app.post('/api/admin/applications/bulk', async (c) => {
-    const mod = await ensureModerator(c);
-    if (mod instanceof Response) return mod;
-
-    const body = (await c.req.json().catch(() => ({}))) as {
-      ids?: number[];
-      action?: 'approve' | 'reject' | 'delete';
-      reason?: string;
-    };
-    const ids = (body.ids ?? [])
-      .map((n) => Number(n))
-      .filter((n) => Number.isFinite(n) && n > 0);
-    if (ids.length === 0) return c.json({ error: 'no ids provided' }, 400);
-    if (ids.length > BULK_MAX) {
-      return c.json({ error: `max ${BULK_MAX} per bulk` }, 400);
-    }
-    const action = body.action;
-    if (!['approve', 'reject', 'delete'].includes(action ?? '')) {
-      return c.json({ error: 'invalid action' }, 400);
-    }
-    const reason = (body.reason ?? '').trim() || '(理由未記入)';
-    const origin = new URL(c.req.url).origin;
-
-    const results: { id: number; ok: boolean; error?: string; emojiName?: string }[] = [];
-
-    // 直列実行 (mantaro / D1 への並列ヒットを避け、ログを読みやすくする)
-    for (const id of ids) {
-      try {
-        if (action === 'approve') {
-          const r = await approveOne(c.env, c.executionCtx, mod, id, origin);
-          results.push({ id, ok: true, emojiName: r.emoji.name });
-        } else if (action === 'reject') {
-          await rejectOne(c.env, c.executionCtx, mod, id, reason, origin);
-          results.push({ id, ok: true });
-        } else if (action === 'delete') {
-          await deleteOne(c.env, c.executionCtx, id);
-          results.push({ id, ok: true });
-        }
-      } catch (e) {
-        results.push({ id, ok: false, error: String(e) });
-      }
-    }
-
-    const okCount = results.filter((r) => r.ok).length;
-    return c.json({
-      ok: okCount === results.length,
-      processed: results.length,
-      succeeded: okCount,
-      failed: results.length - okCount,
-      results,
-    });
-  });
-
   return app;
 }
 
@@ -267,10 +292,20 @@ async function approveOne(
   mod: ModeratorInfo,
   id: number,
   origin: string,
+  /** 同バルク内ですでに採用した name 集合 (本体 cache 反映前の重複検知) */
+  addedNames: Set<string>,
 ): Promise<{ emoji: { id: string; name: string } }> {
   const row = await fetchApplication(env, id);
   if (!row) throw new ActionError('not_found', 404);
   if (row.status !== 'pending') throw new ActionError(`already_${row.status}`, 409);
+
+  // 同名チェック (本体 cache + 同バルク内追加分)
+  if (addedNames.has(row.name) || (await emojiNameExists(env, row.name))) {
+    throw new ActionError(
+      `name_already_exists: 絵文字名 :${row.name}: はすでに存在します。申請の名前を変更してから再採用してください。`,
+      409,
+    );
+  }
 
   const aliases = JSON.parse(row.aliases || '[]') as string[];
   const adminUrl = `${origin}/admin/${id}`;
@@ -470,6 +505,12 @@ class ActionError extends Error {
 }
 function errCode(e: unknown): string {
   return e instanceof ActionError ? e.code : 'internal_error';
+}
+/** UI に出す用の読みやすい一行 (`ActionError.code` の前半をそのまま、その他は message)。 */
+function errDetail(e: unknown): string {
+  if (e instanceof ActionError) return e.code;
+  if (e instanceof Error) return e.message;
+  return String(e);
 }
 function errStatus(e: unknown): 400 | 404 | 409 | 410 | 502 | 500 {
   if (e instanceof ActionError) {
