@@ -2,18 +2,27 @@ import { fsRouter } from 'waku';
 import adapter from 'waku/adapters/cloudflare';
 import { buildApi } from './server/api';
 
-// Waku の Cloudflare adapter 戻り値は ExportedHandler 互換 + SSG 用 INTERNAL_* も含むため
-// spread で全 export を保持しつつ fetch のみ上書きする。
+// Waku Cloudflare adapter 戻り値の構造:
+//   {
+//     defaultExport: { fetch(req, env) {...}, ...handlers },   ← CF Workers の真の entry
+//     INTERNAL_runBuild / INTERNAL_runFetch などの SSG/dev 用 export
+//   }
+// よって CF Workers のリクエストに対して Hono を先に挿し込みたい場合、defaultExport.fetch を
+// override する必要がある (トップレベルの fetch を上書きしても効かない)。
 const wakuHandler = adapter(
   fsRouter(import.meta.glob('./pages/**/*.{tsx,ts}')),
   {
     handlers: {} satisfies ExportedHandler<Env>,
   },
-) as ExportedHandler<Env> & Record<string, unknown>;
+) as {
+  defaultExport: ExportedHandler<Env>;
+  [key: string]: unknown;
+};
 
 const api = buildApi();
+const originalFetch = wakuHandler.defaultExport.fetch;
 
-// Hono ルーターで先に処理するパス
+// Hono ルーターが先に処理する path
 const API_PATH_PATTERNS = [
   /^\/login$/,
   /^\/auth\/callback$/,
@@ -21,16 +30,25 @@ const API_PATH_PATTERNS = [
   /^\/api(\/|$)/,
 ];
 
+async function combinedFetch(
+  req: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const url = new URL(req.url);
+  if (API_PATH_PATTERNS.some((p) => p.test(url.pathname))) {
+    return api.fetch(req, env, ctx);
+  }
+  if (!originalFetch) {
+    return new Response('Waku defaultExport.fetch missing', { status: 500 });
+  }
+  return originalFetch.call(wakuHandler.defaultExport, req, env, ctx);
+}
+
 export default {
   ...wakuHandler,
-  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(req.url);
-    if (API_PATH_PATTERNS.some((p) => p.test(url.pathname))) {
-      return api.fetch(req, env, ctx);
-    }
-    if (!wakuHandler.fetch) {
-      return new Response('Waku handler missing fetch', { status: 500 });
-    }
-    return wakuHandler.fetch(req, env, ctx);
+  defaultExport: {
+    ...wakuHandler.defaultExport,
+    fetch: combinedFetch,
   },
-} as typeof wakuHandler;
+};
