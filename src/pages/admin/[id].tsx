@@ -1,4 +1,5 @@
 import { AdminDetail } from '../../components/admin-detail';
+import { AdminHero } from '../../components/admin-hero';
 
 type Props = {
   id: string;
@@ -7,23 +8,27 @@ type Props = {
 export default function AdminDetailPage({ id }: Props) {
   const n = parseInt(id, 10);
   if (!Number.isFinite(n) || n <= 0) {
-    return (
-      <div className="alert alert-error">不正な申請 ID: {id}</div>
-    );
+    return <div className="alert alert-error">不正な申請 ID: {id}</div>;
   }
   return (
     <div className="space-y-6">
       <title>申請 #{n} — ブキチの絵文字工場</title>
-      <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+      <AdminHero
+        eyebrow={`moderator · application #${n}`}
+        title={
+          <>
+            申請の決裁<span className="opacity-60 text-2xl ml-2">#{n}</span>
+          </>
+        }
+        subtitle="採用するとスーパーマンタロー名義でいかすきーに登録されます。決裁前にカテゴリ・name・エイリアスを編集できます。"
+      >
         <a
           href="/admin"
-          className="hover:text-[var(--color-accent)] hover:underline underline-offset-2"
+          className="inline-flex items-center gap-1 text-sm text-[var(--color-accent-fg)]/90 hover:text-[var(--color-accent-fg)] hover:underline underline-offset-2"
         >
-          ← 申請一覧
+          ← 申請一覧に戻る
         </a>
-        <span className="text-[var(--color-text-faint)]">/</span>
-        <span>申請 #{n}</span>
-      </div>
+      </AdminHero>
       <AdminDetail id={n} />
     </div>
   );

@@ -35,8 +35,10 @@ export const Header = () => {
           </Link>
           <Link
             to="/admin"
-            className="rounded-md px-3 py-1.5 no-underline hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] transition-colors"
+            className="rounded-md px-3 py-1.5 no-underline border border-[var(--color-border)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] transition-colors flex items-center gap-1"
+            title="モデレーター専用エリア"
           >
+            <span aria-hidden="true">🛠</span>
             管理
           </Link>
         </nav>
