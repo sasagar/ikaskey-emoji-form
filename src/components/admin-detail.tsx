@@ -25,6 +25,11 @@ type Application = {
   registered_emoji_id: string | null;
   registered_emoji_name: string | null;
   created_at: string;
+  source_type?: 'upload' | 'remote_copy';
+  source_host?: string | null;
+  source_remote_name?: string | null;
+  source_emoji_id?: string | null;
+  source_remote_url?: string | null;
 };
 
 type CategoriesResp = { categories: string[]; fetchedAt: number };
@@ -163,18 +168,27 @@ export function AdminDetail({ id }: { id: number }) {
       <section className="card p-5 sm:p-6">
         <div className="flex gap-5 sm:gap-6 flex-col sm:flex-row">
           <div className="shrink-0 mx-auto sm:mx-0">
-            {!decided ? (
+            {!decided || app.source_type === 'remote_copy' ? (
               <a
                 href={`/api/admin/applications/${id}/image`}
                 target="_blank"
                 rel="noreferrer"
-                className="block group"
+                className="block group relative"
               >
                 <img
                   src={`/api/admin/applications/${id}/image`}
                   alt={app.name}
+                  referrerPolicy="no-referrer"
                   className="h-40 w-40 sm:h-44 sm:w-44 rounded-lg border-2 border-[var(--color-border-strong)] bg-[var(--color-surface-2)] object-contain p-2 group-hover:border-[var(--color-accent)] transition-colors"
                 />
+                {app.source_type === 'remote_copy' && (
+                  <span
+                    title="他鯖からインポート"
+                    className="absolute -top-1 -right-1 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)] text-base"
+                  >
+                    🌐
+                  </span>
+                )}
               </a>
             ) : (
               <div className="flex h-40 w-40 sm:h-44 sm:w-44 flex-col items-center justify-center rounded-lg border-2 border-dashed border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2 text-xs text-[var(--color-text-faint)] text-center gap-1">
@@ -183,7 +197,9 @@ export function AdminDetail({ id }: { id: number }) {
               </div>
             )}
             <p className="mt-2 text-xs text-[var(--color-text-faint)] text-center font-mono">
-              {app.mime_type} · {fmtSize(app.file_size)}
+              {app.source_type === 'remote_copy'
+                ? `🌐 ${app.source_host}`
+                : `${app.mime_type} · ${fmtSize(app.file_size)}`}
             </p>
           </div>
 
@@ -207,8 +223,19 @@ export function AdminDetail({ id }: { id: number }) {
               </dd>
               <dt className="text-[var(--color-text-faint)]">申請日時</dt>
               <dd>{new Date(app.created_at).toLocaleString('ja-JP')}</dd>
-              <dt className="text-[var(--color-text-faint)]">元ファイル</dt>
-              <dd className="font-mono text-xs text-[var(--color-text-muted)] break-all">{app.original_filename ?? '-'}</dd>
+              {app.source_type === 'remote_copy' ? (
+                <>
+                  <dt className="text-[var(--color-text-faint)]">取り込み元</dt>
+                  <dd className="text-[var(--color-info)] break-all">
+                    <code className="font-mono">:{app.source_remote_name}:</code> @ {app.source_host}
+                  </dd>
+                </>
+              ) : (
+                <>
+                  <dt className="text-[var(--color-text-faint)]">元ファイル</dt>
+                  <dd className="font-mono text-xs text-[var(--color-text-muted)] break-all">{app.original_filename ?? '-'}</dd>
+                </>
+              )}
               {decided && (
                 <>
                   <dt className="text-[var(--color-text-faint)]">決裁</dt>

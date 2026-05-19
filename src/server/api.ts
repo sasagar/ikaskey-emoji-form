@@ -5,6 +5,7 @@ import { getEmojiCategories } from './categories';
 import { getEmojiMap } from './emoji-map';
 import { handleSubmit } from './submit';
 import { buildAdminApi } from './admin';
+import { mantaroListRemote } from './mantaro';
 
 /**
  * /api/* と /login, /auth/callback, /logout を扱う Hono アプリ。
@@ -48,6 +49,26 @@ export function buildApi() {
 
   // --- 申請 ---
   app.post('/api/submit', handleSubmit);
+
+  // --- リモート emoji 検索 (申請フォームの「他鯖から取り込み」用) ---
+  // ログイン済ユーザのみ。mantaro トークンで admin/emoji/list-remote を叩く。
+  app.get('/api/lookup-remote', async (c) => {
+    const sess = await readSession(c);
+    if (!sess) return c.json({ error: 'unauthorized' }, 401);
+    const host = (c.req.query('host') ?? '').trim().toLowerCase();
+    const name = (c.req.query('name') ?? '').trim();
+    if (!host || !name) return c.json({ error: 'host and name required' }, 400);
+    // ホスト名簡易チェック (英数 . - のみ、@ なし)
+    if (!/^[a-z0-9.-]+$/.test(host)) return c.json({ error: 'invalid host' }, 400);
+    if (!/^[a-zA-Z0-9_+-]+$/.test(name)) return c.json({ error: 'invalid name' }, 400);
+    try {
+      const list = await mantaroListRemote(c.env, host, name, 5);
+      const exact = list.find((e) => e.name === name) ?? null;
+      return c.json({ exact, candidates: list });
+    } catch (e) {
+      return c.json({ error: 'lookup failed', detail: String(e) }, 502);
+    }
+  });
 
   // --- 申請者: 自分の申請履歴 ---
   app.get('/api/my/applications', async (c) => {

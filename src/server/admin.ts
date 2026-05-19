@@ -1,8 +1,20 @@
 import { Hono } from 'hono';
 import { ensureModerator, type ModeratorInfo } from './moderator';
 import { parseAliases, NAME_PATTERN } from './validate';
-import { mantaroUploadDriveBlob, mantaroEmojiAdd, mantaroNotesCreate } from './mantaro';
+import {
+  mantaroUploadDriveBlob,
+  mantaroEmojiAdd,
+  mantaroNotesCreate,
+  mantaroEmojiCopy,
+  mantaroEmojiUpdate,
+} from './mantaro';
 import { notifyDiscord } from './discord';
+import {
+  approvedNote,
+  rejectedNote,
+  approvedDiscord,
+  rejectedDiscord,
+} from './messages';
 
 export type ApplicationRow = {
   id: number;
@@ -26,6 +38,11 @@ export type ApplicationRow = {
   registered_emoji_id: string | null;
   registered_emoji_name: string | null;
   created_at: string;
+  source_type: 'upload' | 'remote_copy';
+  source_host: string | null;
+  source_remote_name: string | null;
+  source_emoji_id: string | null;
+  source_remote_url: string | null;
 };
 
 const BULK_MAX = 20;
@@ -46,7 +63,8 @@ export function buildAdminApi() {
               name, category, category_is_new, aliases, comment,
               r2_key, mime_type, file_size, original_filename,
               status, decided_by, decided_by_username, decided_at, reject_reason,
-              registered_emoji_id, registered_emoji_name, created_at
+              registered_emoji_id, registered_emoji_name, created_at,
+              source_type, source_host, source_remote_name, source_emoji_id, source_remote_url
        FROM applications WHERE status = ? ORDER BY created_at DESC LIMIT ?`,
     )
       .bind(status, limit)
@@ -64,13 +82,18 @@ export function buildAdminApi() {
     return c.json({ application: row });
   });
 
-  // ---- 画像 (R2 から stream) ----
+  // ---- 画像 (R2 から stream、または remote の preview にリダイレクト) ----
   app.get('/api/admin/applications/:id/image', async (c) => {
     const mod = await ensureModerator(c);
     if (mod instanceof Response) return mod;
     const id = parseInt(c.req.param('id'), 10);
     const row = await fetchApplication(c.env, id);
     if (!row) return c.text('not found', 404);
+    // remote_copy はオリジナル URL に redirect (Referer は no-referrer 推奨)
+    if (row.source_type === 'remote_copy') {
+      if (row.source_remote_url) return c.redirect(row.source_remote_url, 302);
+      return c.text('no remote url', 404);
+    }
     if (!row.r2_key) return c.text('no image', 404);
     const obj = await c.env.R2.get(row.r2_key);
     if (!obj) return c.text('image missing in R2', 410);
@@ -249,34 +272,74 @@ async function approveOne(
   if (!row) throw new ActionError('not_found', 404);
   if (row.status !== 'pending') throw new ActionError(`already_${row.status}`, 409);
 
-  // R2 取得 (バイト列保持で mantaro upload と Discord に共用)
-  const obj = await env.R2.get(row.r2_key);
-  if (!obj) throw new ActionError('image_missing_in_r2', 410);
-  const arrBuf = await obj.arrayBuffer();
-  const blob = new Blob([arrBuf], { type: row.mime_type });
+  const aliases = JSON.parse(row.aliases || '[]') as string[];
+  const adminUrl = `${origin}/admin/${id}`;
 
-  // mantaro ドライブに upload
-  let driveFile;
-  try {
-    driveFile = await mantaroUploadDriveBlob(env, row.original_filename ?? row.name, blob);
-  } catch (e) {
-    throw new ActionError(`drive_upload_failed: ${e}`, 502);
+  // 通知用 attachment (upload 経路は R2 blob、remote 経路は imageUrl だけ)
+  let approveAttachment: { filename: string; blob: Blob } | undefined;
+  let approveImageUrl: string | undefined;
+
+  let emoji: { id: string; name: string };
+
+  if (row.source_type === 'remote_copy') {
+    // ----- 他鯖から取り込み -----
+    if (!row.source_emoji_id) {
+      throw new ActionError('missing_source_emoji_id', 500);
+    }
+    let copied: { id: string };
+    try {
+      copied = await mantaroEmojiCopy(env, row.source_emoji_id);
+    } catch (e) {
+      throw new ActionError(`emoji_copy_failed: ${e}`, 502);
+    }
+    // copy 直後の rename + category/aliases 設定
+    try {
+      await mantaroEmojiUpdate(env, {
+        id: copied.id,
+        name: row.name,
+        category: row.category,
+        aliases,
+      });
+    } catch (e) {
+      throw new ActionError(`emoji_update_after_copy_failed: ${e}`, 502);
+    }
+    emoji = { id: copied.id, name: row.name };
+    approveImageUrl = row.source_remote_url ?? undefined;
+  } else {
+    // ----- 通常のアップロード経路 -----
+    const obj = await env.R2.get(row.r2_key);
+    if (!obj) throw new ActionError('image_missing_in_r2', 410);
+    const arrBuf = await obj.arrayBuffer();
+    const blob = new Blob([arrBuf], { type: row.mime_type });
+
+    let driveFile;
+    try {
+      driveFile = await mantaroUploadDriveBlob(env, row.original_filename ?? row.name, blob);
+    } catch (e) {
+      throw new ActionError(`drive_upload_failed: ${e}`, 502);
+    }
+
+    try {
+      emoji = await mantaroEmojiAdd(env, {
+        name: row.name,
+        fileId: driveFile.id,
+        category: row.category,
+        aliases,
+      });
+    } catch (e) {
+      throw new ActionError(`emoji_add_failed: ${e}`, 502);
+    }
+
+    approveAttachment = {
+      filename: `${emoji.name}${inferExt(row.mime_type)}`,
+      blob: new Blob([arrBuf], { type: row.mime_type }),
+    };
+
+    // R2 cleanup (背景)
+    ctx.waitUntil(env.R2.delete(row.r2_key));
   }
 
-  // admin/emoji/add
-  let emoji;
-  try {
-    emoji = await mantaroEmojiAdd(env, {
-      name: row.name,
-      fileId: driveFile.id,
-      category: row.category,
-      aliases: JSON.parse(row.aliases || '[]') as string[],
-    });
-  } catch (e) {
-    throw new ActionError(`emoji_add_failed: ${e}`, 502);
-  }
-
-  // D1 更新
+  // D1 更新 (共通)
   const now = new Date().toISOString();
   await env.DB.prepare(
     `UPDATE applications SET
@@ -288,33 +351,34 @@ async function approveOne(
     .bind(mod.session.userId, mod.session.username, now, emoji.id, emoji.name, id)
     .run();
 
-  // 通知 + R2 cleanup は非同期
+  // 申請者通知 note (共通)
   ctx.waitUntil(
     mantaroNotesCreate(env, {
-      text: `@${row.applicant_username} 絵文字 :${emoji.name}: を登録しました。ご申請ありがとうございました!`,
+      text: approvedNote({
+        applicantUsername: row.applicant_username,
+        emojiName: emoji.name,
+      }),
       visibility: 'home',
       localOnly: true,
     }).catch((e) => console.error('approve notify failed:', e)),
   );
+
+  // Discord 通知 (共通)
   ctx.waitUntil(
     notifyDiscord(env, {
       title: `採用: :${emoji.name}:`,
-      description: [
-        `申請者: @${row.applicant_username}`,
-        `カテゴリ: ${row.category ?? '(未指定)'}`,
-        `決裁者: @${mod.session.username}`,
-        '',
-        `**[→ 申請詳細を見る](${origin}/admin/${id})**`,
-      ].join('\n'),
-      url: `${origin}/admin/${id}`,
+      description: approvedDiscord({
+        applicantUsername: row.applicant_username,
+        category: row.category,
+        decidedByUsername: mod.session.username,
+        adminUrl,
+      }),
+      url: adminUrl,
       color: 0x22c55e,
-      attachment: {
-        filename: `${emoji.name}${inferExt(row.mime_type)}`,
-        blob: new Blob([arrBuf], { type: row.mime_type }),
-      },
+      attachment: approveAttachment,
+      imageUrl: approveImageUrl,
     }),
   );
-  ctx.waitUntil(env.R2.delete(row.r2_key));
 
   return { emoji };
 }
@@ -352,9 +416,14 @@ async function rejectOne(
     .bind(mod.session.userId, mod.session.username, now, reason, id)
     .run();
 
+  const adminUrl = `${origin}/admin/${id}`;
   ctx.waitUntil(
     mantaroNotesCreate(env, {
-      text: `@${row.applicant_username} 申し訳ありませんが、絵文字 :${row.name}: の申請を却下しました。\n理由: ${reason}`,
+      text: rejectedNote({
+        applicantUsername: row.applicant_username,
+        applicationName: row.name,
+        reason,
+      }),
       visibility: 'specified',
       localOnly: true,
     }).catch((e) => console.error('reject notify failed:', e)),
@@ -362,21 +431,23 @@ async function rejectOne(
   ctx.waitUntil(
     notifyDiscord(env, {
       title: `却下: :${row.name}:`,
-      description: [
-        `申請者: @${row.applicant_username}`,
-        `理由: ${reason}`,
-        `決裁者: @${mod.session.username}`,
-        '',
-        `**[→ 申請詳細を見る](${origin}/admin/${id})**`,
-      ].join('\n'),
-      url: `${origin}/admin/${id}`,
+      description: rejectedDiscord({
+        applicantUsername: row.applicant_username,
+        reason,
+        decidedByUsername: mod.session.username,
+        adminUrl,
+      }),
+      url: adminUrl,
       color: 0xef4444,
       attachment: rejectBlob
         ? { filename: `${row.name}${inferExt(row.mime_type)}`, blob: rejectBlob }
         : undefined,
+      imageUrl: !rejectBlob && row.source_type === 'remote_copy' && row.source_remote_url
+        ? row.source_remote_url
+        : undefined,
     }),
   );
-  ctx.waitUntil(env.R2.delete(row.r2_key));
+  if (row.r2_key) ctx.waitUntil(env.R2.delete(row.r2_key));
 }
 
 async function deleteOne(env: Env, ctx: ExecutionContext, id: number): Promise<void> {

@@ -94,3 +94,58 @@ export async function mantaroNotesCreate(
 ): Promise<{ createdNote: { id: string } }> {
   return call(env, 'notes/create', args as Record<string, unknown>);
 }
+
+export type RemoteEmoji = {
+  id: string;
+  name: string;
+  host: string | null;
+  url: string;
+  aliases: string[];
+  category: string | null;
+};
+
+/**
+ * リモート (他鯖) emoji を host + name で検索。
+ * ikaskey にすでにキャッシュされている (受信した) emoji のみヒットする。
+ * 未受信のものは取得不可 (Misskey の仕様)。
+ */
+export async function mantaroListRemote(
+  env: Env,
+  host: string,
+  query: string,
+  limit = 5,
+): Promise<RemoteEmoji[]> {
+  const r = await call<RemoteEmoji[]>(env, 'admin/emoji/list-remote', {
+    host,
+    query,
+    limit,
+  });
+  return Array.isArray(r) ? r : [];
+}
+
+/**
+ * リモート (キャッシュ済) emoji をローカルに copy。
+ * 戻り値は新しくローカルに作られた emoji の id。
+ */
+export async function mantaroEmojiCopy(
+  env: Env,
+  emojiId: string,
+): Promise<{ id: string }> {
+  return call(env, 'admin/emoji/copy', { emojiId });
+}
+
+/**
+ * 既存ローカル emoji の name / category / aliases を更新。
+ * admin/emoji/copy 直後の rename に使う。
+ */
+export async function mantaroEmojiUpdate(
+  env: Env,
+  args: {
+    id: string;
+    name?: string;
+    category?: string | null;
+    aliases?: string[];
+  },
+): Promise<void> {
+  await call(env, 'admin/emoji/update', args as Record<string, unknown>);
+}

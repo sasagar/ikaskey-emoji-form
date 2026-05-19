@@ -19,6 +19,9 @@ type Application = {
   reject_reason: string | null;
   registered_emoji_name: string | null;
   created_at: string;
+  source_type?: 'upload' | 'remote_copy';
+  source_host?: string | null;
+  source_remote_name?: string | null;
 };
 
 type StatusKey = 'pending' | 'approved' | 'rejected';
@@ -276,14 +279,23 @@ export function AdminList() {
               </label>
               <a
                 href={`/admin/${a.id}`}
-                className="shrink-0 group"
+                className="shrink-0 group relative"
                 title={`詳細を開く (#${a.id})`}
               >
                 <img
                   src={`/api/admin/applications/${a.id}/image`}
                   alt={a.name}
+                  referrerPolicy="no-referrer"
                   className="h-16 w-16 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] object-contain p-1.5 group-hover:border-[var(--color-accent)] transition-colors"
                 />
+                {a.source_type === 'remote_copy' && (
+                  <span
+                    title="他鯖からインポート"
+                    className="absolute -top-1 -right-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-info-bg)] text-[var(--color-info)] border border-[var(--color-info)] text-xs"
+                  >
+                    🌐
+                  </span>
+                )}
               </a>
               <div className="flex-1 min-w-0 space-y-1.5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -308,6 +320,11 @@ export function AdminList() {
                   <span className="text-[var(--color-text-faint)]">·</span>{' '}
                   {new Date(a.created_at).toLocaleString('ja-JP')}
                 </p>
+                {a.source_type === 'remote_copy' && (
+                  <p className="text-xs text-[var(--color-info)]">
+                    🌐 取り込み元: <code className="font-mono">:{a.source_remote_name}:</code> @ {a.source_host}
+                  </p>
+                )}
                 <p className="text-xs text-[var(--color-text-muted)]">
                   <span className="text-[var(--color-text-faint)]">カテゴリ:</span>{' '}
                   {a.category ?? <span className="italic">未指定</span>}
