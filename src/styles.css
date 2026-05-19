@@ -70,8 +70,13 @@
   --shadow-stamp: 0 2px 0 0 currentColor, inset 0 0 0 2px currentColor;
 }
 
+/*
+ * Dark mode override.
+ * Tailwind v4 の @theme は top-level でしか使えないため (@media 内にネストすると
+ * media 制約が剥がれて値がマージされる)、通常の :root で variable を再代入する。
+ */
 @media (prefers-color-scheme: dark) {
-  @theme {
+  :root {
     --color-bg: #1a130a;
     --color-bg-grain: rgba(255, 240, 200, 0.015);
     --color-surface: #251a0e;
