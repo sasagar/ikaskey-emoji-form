@@ -13,7 +13,9 @@ export default async function RootLayout({ children }: RootLayoutProps) {
     <div className="min-h-svh flex flex-col">
       <meta name="description" content={data.description} />
       <meta name="theme-color" content="#563d00" />
-      <link rel="icon" type="image/png" href={data.icon} />
+      <link rel="icon" type="image/png" href="/images/favicon.png" />
+      <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png" />
+      <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       <link
@@ -33,7 +35,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
 const getData = async () => {
   const data = {
     description: 'いかすきー (ikaskey.bktsk.com) のカスタム絵文字申請窓口。',
-    icon: '/images/favicon.png',
   };
 
   return data;
