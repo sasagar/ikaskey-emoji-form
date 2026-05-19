@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ikaskey-emoji-form",
+  "main": "./src/waku.server",
+  // nodejs_als is required for Waku server-side request context
+  "compatibility_flags": ["nodejs_als"],
+  "compatibility_date": "2025-11-17",
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/public",
+    "html_handling": "drop-trailing-slash"
+  },
+  "vars": {
+    "MISSKEY_HOST": "ikaskey.bktsk.com",
+    "APP_NAME": "ikaskey-emoji-form",
+    "APP_PERMISSIONS": "read:account"
+  },
+  // ---- Bindings (uncomment and fill IDs after the corresponding `wrangler` create commands) ----
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "ikaskey-emoji-form",
+  //     "database_id": "<wrangler d1 create ikaskey-emoji-form で取得した UUID>"
+  //   }
+  // ],
+  // "r2_buckets": [
+  //   {
+  //     "binding": "R2",
+  //     "bucket_name": "ikaskey-emoji-staging"
+  //   }
+  // ],
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "KV",
+  //     "id": "<wrangler kv namespace create EMOJI_CATEGORY_CACHE で取得した ID>"
+  //   }
+  // ],
+  // ---- Secrets (use `wrangler secret put <NAME>`) ----
+  // MANTARO_TOKEN        : スーパーマンタロー API トークン (write:admin:emoji + write:drive 必須)
+  // DISCORD_WEBHOOK_URL  : 申請通知用 Discord Webhook URL
+  // SESSION_SECRET       : セッション cookie 署名鍵 (openssl rand -hex 32)
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "no_bundle": true
+}
