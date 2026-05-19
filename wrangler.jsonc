@@ -15,26 +15,25 @@
     "APP_NAME": "ikaskey-emoji-form",
     "APP_PERMISSIONS": "read:account"
   },
-  // ---- Bindings (uncomment and fill IDs after the corresponding `wrangler` create commands) ----
-  // "d1_databases": [
-  //   {
-  //     "binding": "DB",
-  //     "database_name": "ikaskey-emoji-form",
-  //     "database_id": "<wrangler d1 create ikaskey-emoji-form で取得した UUID>"
-  //   }
-  // ],
-  // "r2_buckets": [
-  //   {
-  //     "binding": "R2",
-  //     "bucket_name": "ikaskey-emoji-staging"
-  //   }
-  // ],
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "KV",
-  //     "id": "<wrangler kv namespace create EMOJI_CATEGORY_CACHE で取得した ID>"
-  //   }
-  // ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ikaskey-emoji-form",
+      "database_id": "5106c7f9-3068-4b87-985a-167d291ce269"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "ikaskey-emoji-staging"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "5681e6540022497e97a05f893971c605"
+    }
+  ],
   // ---- Secrets (use `wrangler secret put <NAME>`) ----
   // MANTARO_TOKEN        : スーパーマンタロー API トークン (write:admin:emoji + write:drive 必須)
   // DISCORD_WEBHOOK_URL  : 申請通知用 Discord Webhook URL
