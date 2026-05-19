@@ -58,17 +58,19 @@ export function SubmitForm() {
   }, [file]);
 
   if (loading) {
-    return <p className="text-gray-500">読み込み中…</p>;
+    return <p className="text-[var(--color-text-muted)]">読み込み中…</p>;
   }
 
   if (!me || !me.loggedIn) {
     return (
-      <div className="space-y-3">
-        <p>申請にはいかすきーアカウントでのログインが必要です。</p>
-        <a
-          href="/login"
-          className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
+      <div className="space-y-4 text-center py-6">
+        <span className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)] text-2xl">
+          🔑
+        </span>
+        <p className="text-[var(--color-text)]">
+          申請にはいかすきーアカウントでのログインが必要です。
+        </p>
+        <a href="/login" className="btn btn-primary btn-lg">
           いかすきーでログイン
         </a>
       </div>
@@ -77,12 +79,16 @@ export function SubmitForm() {
 
   if (state.kind === 'success') {
     return (
-      <div className="space-y-3 rounded border border-green-300 bg-green-50 p-4">
-        <p className="font-bold text-green-800">申請を受け付けました (id: {state.applicationId})</p>
-        <p className="text-sm text-green-700">
-          <code>:{state.name}:</code> の申請がモデレーターに通知されました。採用 / 却下の判断が出るまでお待ちください。
-        </p>
-        <div className="flex gap-3">
+      <div className="space-y-5">
+        <div className="alert alert-success">
+          <p className="font-display text-base">
+            🎉 申請を受け付けました <span className="opacity-60 text-xs">(id: #{state.applicationId})</span>
+          </p>
+          <p className="mt-1 text-sm">
+            <code className="font-mono">:{state.name}:</code> の申請がモデレーターに通知されました。採用 / 却下の判断が出るまでお待ちください。
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => {
               setName('');
@@ -93,15 +99,12 @@ export function SubmitForm() {
               setFile(null);
               setState({ kind: 'idle' });
             }}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="btn btn-primary"
           >
             続けて別の絵文字を申請する
           </button>
-          <a
-            href="/my"
-            className="rounded border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50"
-          >
-            自分の申請一覧
+          <a href="/my" className="btn btn-ghost">
+            自分の申請一覧 →
           </a>
         </div>
       </div>
@@ -147,23 +150,30 @@ export function SubmitForm() {
     state.kind === 'error' ? state.errors.find((e) => e.field === field)?.message : undefined;
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <p className="text-sm text-gray-600">
-        ログイン中: <code>@{me.username}</code>
-        {me.name ? (
-          <>
-            {' ('}
-            <Mfm text={me.name} />
-            {')'}
-          </>
-        ) : null}{' '}
-        ・<a href="/logout" className="ml-1 underline">ログアウト</a>
-      </p>
+    <form onSubmit={onSubmit} className="space-y-6">
+      {/* User strip */}
+      <div className="flex items-center justify-between gap-3 text-sm rounded-md bg-[var(--color-surface-2)] border border-[var(--color-border)] px-3 py-2">
+        <div className="flex items-center gap-2 text-[var(--color-text)] min-w-0">
+          <span aria-hidden="true" className="text-base">👤</span>
+          <span className="font-mono text-[var(--color-accent)]">@{me.username}</span>
+          {me.name ? (
+            <span className="text-[var(--color-text-muted)] truncate">
+              · <Mfm text={me.name} />
+            </span>
+          ) : null}
+        </div>
+        <a
+          href="/logout"
+          className="shrink-0 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] underline-offset-2 hover:underline"
+        >
+          ログアウト
+        </a>
+      </div>
 
       {/* name */}
       <div>
-        <label className="block text-sm font-medium" htmlFor="name">
-          絵文字名 <span className="text-red-600">*</span>
+        <label className="field-label" htmlFor="name">
+          絵文字名<span className="required">*</span>
         </label>
         <input
           id="name"
@@ -173,15 +183,19 @@ export function SubmitForm() {
           placeholder="例: hanko_sumi"
           pattern="[a-zA-Z0-9_]+"
           required
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 font-mono"
+          className="input font-mono"
         />
-        <p className="mt-1 text-xs text-gray-500">半角英数字とアンダースコア (_) のみ。チャットでは <code>:{name || 'name'}:</code> で参照されます。</p>
-        {errorFor('name') && <p className="mt-1 text-sm text-red-600">{errorFor('name')}</p>}
+        <p className="field-help">
+          半角英数字とアンダースコア (_) のみ。チャットでは{' '}
+          <code className="font-mono text-[var(--color-accent)]">:{name || 'name'}:</code>{' '}
+          で参照されます。
+        </p>
+        {errorFor('name') && <p className="field-error">{errorFor('name')}</p>}
       </div>
 
       {/* category */}
       <div>
-        <label className="block text-sm font-medium" htmlFor="category">カテゴリ</label>
+        <label className="field-label" htmlFor="category">カテゴリ</label>
         {isNewCategory ? (
           <input
             id="category"
@@ -189,14 +203,14 @@ export function SubmitForm() {
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="新しいカテゴリ名 (例: 700 Text / 711 さ行 / 712 し)"
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+            className="input"
           />
         ) : (
           <select
             id="category"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+            className="select"
           >
             <option value="">(未指定 — モデレーターに任せる)</option>
             {categories.map((c) => (
@@ -206,7 +220,7 @@ export function SubmitForm() {
             ))}
           </select>
         )}
-        <label className="mt-2 inline-flex items-center text-sm">
+        <label className="mt-2 inline-flex items-center text-sm gap-2 cursor-pointer select-none text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
           <input
             type="checkbox"
             checked={isNewCategory}
@@ -214,74 +228,83 @@ export function SubmitForm() {
               setIsNewCategory(e.target.checked);
               setCategory('');
             }}
-            className="mr-2"
+            className="accent-[var(--color-accent)] w-4 h-4"
           />
           新しいカテゴリ (手入力)
         </label>
-        {errorFor('category') && <p className="mt-1 text-sm text-red-600">{errorFor('category')}</p>}
+        {errorFor('category') && <p className="field-error">{errorFor('category')}</p>}
       </div>
 
       {/* aliases */}
       <div>
-        <label className="block text-sm font-medium" htmlFor="aliases">エイリアス (カンマ区切り)</label>
+        <label className="field-label" htmlFor="aliases">エイリアス <span className="text-[var(--color-text-faint)] font-normal">(カンマ区切り)</span></label>
         <input
           id="aliases"
           type="text"
           value={aliases}
           onChange={(e) => setAliases(e.target.value)}
           placeholder="例: 済, 完了, はんこ"
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+          className="input"
         />
-        <p className="mt-1 text-xs text-gray-500">日本語の読みや略称を入れておくと検索しやすくなります。</p>
-        {errorFor('aliases') && <p className="mt-1 text-sm text-red-600">{errorFor('aliases')}</p>}
+        <p className="field-help">日本語の読みや略称を入れておくと検索しやすくなります。</p>
+        {errorFor('aliases') && <p className="field-error">{errorFor('aliases')}</p>}
       </div>
 
       {/* file */}
       <div>
-        <label className="block text-sm font-medium" htmlFor="file">
-          画像ファイル <span className="text-red-600">*</span>
+        <label className="field-label" htmlFor="file">
+          画像ファイル<span className="required">*</span>
         </label>
-        <input
-          id="file"
-          type="file"
-          accept="image/png,image/jpeg,image/gif,image/webp,image/apng,image/avif"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          required
-          className="mt-1 w-full"
-        />
-        <p className="mt-1 text-xs text-gray-500">PNG / JPEG / GIF / WebP / APNG / AVIF、2 MiB まで。</p>
-        {previewUrl && (
-          <div className="mt-2 inline-block rounded border border-gray-300 bg-white p-2">
-            <img src={previewUrl} alt="preview" className="max-h-32" />
+        <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
+          <div className="flex-1 min-w-0">
+            <input
+              id="file"
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/apng,image/avif"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              required
+              className="block w-full text-sm text-[var(--color-text-muted)]"
+            />
+            <p className="field-help">PNG / JPEG / GIF / WebP / APNG / AVIF、2 MiB まで。</p>
           </div>
-        )}
-        {errorFor('file') && <p className="mt-1 text-sm text-red-600">{errorFor('file')}</p>}
+          {previewUrl && (
+            <div className="card-sunken p-3 flex items-center justify-center min-w-[88px] min-h-[88px]">
+              <img src={previewUrl} alt="preview" className="max-h-20 max-w-[140px] object-contain" />
+            </div>
+          )}
+        </div>
+        {errorFor('file') && <p className="field-error">{errorFor('file')}</p>}
       </div>
 
       {/* comment */}
       <div>
-        <label className="block text-sm font-medium" htmlFor="comment">コメント (任意)</label>
+        <label className="field-label" htmlFor="comment">コメント <span className="text-[var(--color-text-faint)] font-normal">(任意)</span></label>
         <textarea
           id="comment"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={3}
           placeholder="申請の意図や用途、出典 (許可済みかなど) を簡潔に。"
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+          className="textarea"
         />
       </div>
 
       {state.kind === 'error' && state.general && (
-        <p className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">{state.general}</p>
+        <div className="alert alert-error">{state.general}</div>
       )}
 
-      <button
-        type="submit"
-        disabled={state.kind === 'submitting'}
-        className="rounded bg-blue-600 px-6 py-2 font-medium text-white hover:bg-blue-700 disabled:bg-gray-400"
-      >
-        {state.kind === 'submitting' ? '送信中…' : '申請する'}
-      </button>
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={state.kind === 'submitting'}
+          className="btn btn-primary btn-lg"
+        >
+          {state.kind === 'submitting' ? '送信中…' : '申請する'}
+        </button>
+        <span className="text-xs text-[var(--color-text-faint)]">
+          送信前に内容をご確認ください
+        </span>
+      </div>
     </form>
   );
 }

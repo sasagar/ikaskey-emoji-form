@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mfm } from './mfm';
+import { StatusStamp, statusLabel } from './status-stamp';
 
 type Me =
   | { loggedIn: true; userId: string; username: string; name: string | null }
@@ -47,16 +48,18 @@ export function MyList() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-gray-500">読み込み中…</p>;
+  if (loading) return <p className="text-[var(--color-text-muted)]">読み込み中…</p>;
 
   if (!me || !me.loggedIn) {
     return (
-      <div className="space-y-3">
-        <p>ログインすると過去の申請が表示されます。</p>
-        <a
-          href="/login"
-          className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
+      <div className="card p-6 text-center space-y-4">
+        <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)] text-xl mx-auto">
+          🔑
+        </span>
+        <p className="text-[var(--color-text)]">
+          ログインすると過去の申請が表示されます。
+        </p>
+        <a href="/login" className="btn btn-primary">
           いかすきーでログイン
         </a>
       </div>
@@ -65,12 +68,12 @@ export function MyList() {
 
   if (apps.length === 0) {
     return (
-      <div className="space-y-3 text-gray-500">
-        <p>まだ申請はありません。</p>
-        <a
-          href="/submit"
-          className="inline-block rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
+      <div className="card p-8 text-center space-y-4">
+        <div className="text-5xl opacity-50" aria-hidden="true">📦</div>
+        <p className="text-[var(--color-text-muted)]">
+          まだ申請はありません。最初の絵文字を申請してみましょう。
+        </p>
+        <a href="/submit" className="btn btn-primary">
           絵文字を申請する
         </a>
       </div>
@@ -80,36 +83,68 @@ export function MyList() {
   return (
     <ul className="space-y-3">
       {apps.map((a) => (
-        <li key={a.id} className="flex gap-3 rounded border border-gray-200 bg-white p-3">
+        <li
+          key={a.id}
+          className="card flex gap-4 p-4 transition-all hover:shadow-md hover:border-[var(--color-border-strong)]"
+        >
           <Thumbnail app={a} />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="font-mono text-lg font-bold break-all">:{a.name}:</p>
-              <StatusBadge status={a.status} />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <p className="font-mono text-lg font-semibold text-[var(--color-accent)] break-all leading-tight">
+                :{a.name}:
+              </p>
+              <StatusStamp status={a.status} />
             </div>
-            <p className="mt-1 text-xs text-gray-500">
-              申請日時: {new Date(a.created_at).toLocaleString('ja-JP')}
-              {' ・ '}カテゴリ: {a.category ?? '(未指定)'}
-              {a.category_is_new ? ' [新規]' : ''}
-            </p>
-            <p className="text-xs text-gray-500">エイリアス: {prettyAliases(a.aliases)}</p>
+
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-[var(--color-text-muted)]">
+              <dt className="text-[var(--color-text-faint)]">申請日時</dt>
+              <dd>{new Date(a.created_at).toLocaleString('ja-JP')}</dd>
+              <dt className="text-[var(--color-text-faint)]">カテゴリ</dt>
+              <dd>
+                {a.category ?? <span className="italic">未指定</span>}
+                {a.category_is_new ? (
+                  <span className="ml-2 text-[10px] rounded bg-[var(--color-pending-bg)] text-[var(--color-pending)] px-1.5 py-0.5">
+                    新規
+                  </span>
+                ) : null}
+              </dd>
+              <dt className="text-[var(--color-text-faint)]">エイリアス</dt>
+              <dd className="break-words">{prettyAliases(a.aliases)}</dd>
+            </dl>
+
+            {a.status === 'pending' && (
+              <p className="text-sm text-[var(--color-pending)] font-medium flex items-center gap-1.5">
+                <span aria-hidden="true">⌛</span>
+                モデレーターの確認待ち
+              </p>
+            )}
             {a.status === 'approved' && a.registered_emoji_name && (
-              <p className="mt-2 text-sm text-green-700">
-                ✅ <code>:{a.registered_emoji_name}:</code> として登録されました
-                {a.decided_by_username && ` (by @${a.decided_by_username})`}
-                {a.decided_at && ` / ${new Date(a.decided_at).toLocaleString('ja-JP')}`}
+              <p className="text-sm text-[var(--color-approved)] flex flex-wrap items-center gap-1.5">
+                <span aria-hidden="true">✓</span>
+                <span>
+                  <code className="font-mono font-semibold">:{a.registered_emoji_name}:</code> として登録されました
+                </span>
+                {(a.decided_by_username || a.decided_at) && (
+                  <span className="text-[var(--color-text-faint)] text-xs">
+                    {a.decided_by_username && `by @${a.decided_by_username}`}
+                    {a.decided_at && ` / ${new Date(a.decided_at).toLocaleString('ja-JP')}`}
+                  </span>
+                )}
               </p>
             )}
             {a.status === 'rejected' && (
-              <p className="mt-2 text-sm text-red-700">
-                ❌ 却下されました
-                {a.decided_by_username && ` (by @${a.decided_by_username})`}
-                <br />
-                <span className="text-gray-700">理由: {a.reject_reason ?? '(未記入)'}</span>
-              </p>
-            )}
-            {a.status === 'pending' && (
-              <p className="mt-2 text-sm text-orange-700">⌛ モデレーターの確認待ち</p>
+              <div className="rounded-md bg-[var(--color-rejected-bg)] border border-[var(--color-rejected-border)] p-2.5 text-sm text-[var(--color-rejected)] space-y-1">
+                <p className="flex items-center gap-1.5">
+                  <span aria-hidden="true">✕</span>
+                  <span>却下されました</span>
+                  {a.decided_by_username && (
+                    <span className="text-xs opacity-75">by @{a.decided_by_username}</span>
+                  )}
+                </p>
+                <p className="text-xs text-[var(--color-text)]">
+                  理由: {a.reject_reason ?? <span className="italic">(未記入)</span>}
+                </p>
+              </div>
             )}
           </div>
         </li>
@@ -122,20 +157,26 @@ function Thumbnail({ app }: { app: Application }) {
   // pending: R2 から私のスコープで取れる
   if (app.status === 'pending') {
     return (
-      <a href={`/api/my/applications/${app.id}/image`} target="_blank" rel="noreferrer" className="flex-shrink-0">
+      <a
+        href={`/api/my/applications/${app.id}/image`}
+        target="_blank"
+        rel="noreferrer"
+        className="shrink-0 group"
+        title={`プレビューを開く (#${app.id})`}
+      >
         <img
           src={`/api/my/applications/${app.id}/image`}
           alt={`:${app.name}:`}
-          className="h-16 w-16 rounded border border-gray-300 bg-gray-50 object-contain p-1"
+          className="h-16 w-16 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] object-contain p-1.5 group-hover:border-[var(--color-accent)] transition-colors"
         />
       </a>
     );
   }
-  // approved: 登録済 emoji を Mfm 経由で描画 (emoji-map から URL 解決)
+  // approved: 登録済 emoji を Mfm 経由で描画
   if (app.status === 'approved' && app.registered_emoji_name) {
     return (
-      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded border border-green-300 bg-green-50 p-1">
-        <span className="text-2xl">
+      <div className="shrink-0 flex h-16 w-16 items-center justify-center rounded-md border-2 border-dashed border-[var(--color-approved-border)] bg-[var(--color-approved-bg)] p-1.5">
+        <span className="text-2xl leading-none">
           <Mfm text={`:${app.registered_emoji_name}:`} />
         </span>
       </div>
@@ -143,21 +184,12 @@ function Thumbnail({ app }: { app: Application }) {
   }
   // rejected or 画像なし
   return (
-    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-[10px] text-gray-400">
-      画像なし
+    <div
+      className="shrink-0 flex h-16 w-16 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[10px] text-[var(--color-text-faint)]"
+      title="画像は削除済"
+    >
+      {statusLabel(app.status) === '却下' ? '✕' : '—'}
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: 'pending' | 'approved' | 'rejected' }) {
-  const map = {
-    pending: ['未対応', 'bg-orange-100 text-orange-800 border-orange-300'],
-    approved: ['採用', 'bg-green-100 text-green-800 border-green-300'],
-    rejected: ['却下', 'bg-red-100 text-red-800 border-red-300'],
-  } as const;
-  const [label, cls] = map[status];
-  return (
-    <span className={`rounded border px-2 py-0.5 text-xs ${cls}`}>{label}</span>
   );
 }
 

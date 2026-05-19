@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Mfm } from './mfm';
+import { StatusStamp } from './status-stamp';
 
 type Application = {
   id: number;
@@ -48,29 +49,30 @@ export function AdminList() {
   }, [status]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2">
+    <div className="space-y-5">
+      {/* Tabs */}
+      <div role="tablist" className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
+            role="tab"
             onClick={() => setStatus(t.key)}
-            className={`rounded px-3 py-1.5 text-sm ${
-              status === t.key
-                ? 'bg-blue-600 text-white'
-                : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
+            data-active={status === t.key}
+            className="tab"
           >
             {t.label}
           </button>
         ))}
       </div>
 
-      {loading && <p className="text-gray-500">読み込み中…</p>}
+      {loading && (
+        <p className="text-[var(--color-text-muted)] text-sm">読み込み中…</p>
+      )}
       {error && (
-        <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div className="alert alert-error">
           {error}
           {error.includes('ログイン') && (
-            <a href="/login" className="ml-2 underline">
+            <a href="/login" className="ml-2 font-semibold underline">
               ログイン
             </a>
           )}
@@ -78,52 +80,85 @@ export function AdminList() {
       )}
 
       {!loading && !error && apps.length === 0 && (
-        <p className="text-gray-500">該当する申請はありません。</p>
+        <div className="card p-8 text-center space-y-2">
+          <div className="text-4xl opacity-40" aria-hidden="true">📭</div>
+          <p className="text-[var(--color-text-muted)] text-sm">
+            該当する申請はありません。
+          </p>
+        </div>
       )}
 
       <ul className="space-y-3">
         {apps.map((a) => (
           <li
             key={a.id}
-            className="flex gap-4 rounded border border-gray-200 bg-white p-3"
+            className="card flex gap-4 p-4 transition-all hover:shadow-md hover:border-[var(--color-border-strong)]"
           >
-            <a href={`/admin/${a.id}`} className="flex-shrink-0">
+            <a
+              href={`/admin/${a.id}`}
+              className="shrink-0 group"
+              title={`詳細を開く (#${a.id})`}
+            >
               <img
                 src={`/api/admin/applications/${a.id}/image`}
                 alt={a.name}
-                className="h-16 w-16 rounded border border-gray-300 bg-gray-50 object-contain p-1"
+                className="h-16 w-16 rounded-md border border-[var(--color-border-strong)] bg-[var(--color-surface-2)] object-contain p-1.5 group-hover:border-[var(--color-accent)] transition-colors"
               />
             </a>
-            <div className="flex-1 space-y-1">
-              <a
-                href={`/admin/${a.id}`}
-                className="block font-mono text-lg font-bold text-blue-700 hover:underline"
-              >
-                :{a.name}:
-              </a>
-              <p className="text-sm text-gray-600">
-                <span className="text-gray-500">申請者:</span> @{a.applicant_username}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <a
+                  href={`/admin/${a.id}`}
+                  className="font-mono text-lg font-semibold text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] hover:underline underline-offset-2 break-all leading-tight"
+                >
+                  :{a.name}:
+                </a>
+                <StatusStamp status={a.status} />
+              </div>
+              <p className="text-sm text-[var(--color-text-muted)]">
+                <span className="text-[var(--color-text-faint)]">申請者:</span>{' '}
+                <span className="font-mono text-[var(--color-text)]">@{a.applicant_username}</span>
                 {a.applicant_name ? (
                   <>
-                    {' ('}
+                    {' '}
+                    <span className="text-[var(--color-text-faint)]">·</span>{' '}
                     <Mfm text={a.applicant_name} />
-                    {')'}
                   </>
                 ) : null}{' '}
-                ・ {new Date(a.created_at).toLocaleString('ja-JP')}
+                <span className="text-[var(--color-text-faint)]">·</span>{' '}
+                {new Date(a.created_at).toLocaleString('ja-JP')}
               </p>
-              <p className="text-xs text-gray-500">
-                カテゴリ: {a.category ?? '(未指定)'}
-                {a.category_is_new ? ' [新規]' : ''} ・ alias: {prettyAliases(a.aliases)}
+              <p className="text-xs text-[var(--color-text-muted)]">
+                <span className="text-[var(--color-text-faint)]">カテゴリ:</span>{' '}
+                {a.category ?? <span className="italic">未指定</span>}
+                {a.category_is_new ? (
+                  <span className="ml-1 text-[10px] rounded bg-[var(--color-pending-bg)] text-[var(--color-pending)] px-1.5 py-0.5">
+                    新規
+                  </span>
+                ) : null}{' '}
+                <span className="text-[var(--color-text-faint)]">·</span>{' '}
+                <span className="text-[var(--color-text-faint)]">エイリアス:</span>{' '}
+                {prettyAliases(a.aliases)}
               </p>
               {a.status === 'approved' && a.registered_emoji_name && (
-                <p className="text-xs text-green-700">
-                  ✅ 採用: :{a.registered_emoji_name}: by @{a.decided_by_username}
+                <p className="text-xs text-[var(--color-approved)]">
+                  ✓ 採用 <code className="font-mono">:{a.registered_emoji_name}:</code>
+                  {a.decided_by_username && (
+                    <span className="text-[var(--color-text-faint)] ml-1">
+                      by @{a.decided_by_username}
+                    </span>
+                  )}
                 </p>
               )}
               {a.status === 'rejected' && (
-                <p className="text-xs text-red-700">
-                  ❌ 却下 by @{a.decided_by_username}: {a.reject_reason ?? ''}
+                <p className="text-xs text-[var(--color-rejected)]">
+                  ✕ 却下
+                  {a.decided_by_username && (
+                    <span className="text-[var(--color-text-faint)] ml-1">
+                      by @{a.decided_by_username}
+                    </span>
+                  )}
+                  {a.reject_reason ? `: ${a.reject_reason}` : ''}
                 </p>
               )}
             </div>

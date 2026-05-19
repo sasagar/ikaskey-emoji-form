@@ -1,1 +1,478 @@
 @import 'tailwindcss';
+
+/*
+ * ブキチの絵文字工場 — Design System
+ *
+ * Theme: workshop / atelier (craftsman bench), warm browns + cream paper.
+ * ikaskey channel color #563d00 ("bukichi 茶") as accent.
+ * Light + dark modes via prefers-color-scheme.
+ */
+
+@theme {
+  /* --- Color tokens (light defaults; dark overrides below) --- */
+  --color-bg: #faf4e8;
+  --color-bg-grain: rgba(86, 61, 0, 0.025);
+  --color-surface: #fffdf8;
+  --color-surface-2: #f5ebd7;
+  --color-surface-sunken: #efe2c4;
+  --color-border: #e0cda1;
+  --color-border-strong: #b89a6a;
+  --color-text: #2a1d08;
+  --color-text-muted: #6b5430;
+  --color-text-faint: #9c8453;
+
+  --color-accent: #563d00;
+  --color-accent-hover: #6e4f0f;
+  --color-accent-pressed: #3f2c00;
+  --color-accent-fg: #faf4e8;
+  --color-accent-soft: #ede0bf;
+
+  --color-pending: #b86e00;
+  --color-pending-bg: #fdf0d6;
+  --color-pending-border: #e6b961;
+  --color-approved: #4e7c2e;
+  --color-approved-bg: #e7f1d8;
+  --color-approved-border: #94c266;
+  --color-rejected: #b33f2e;
+  --color-rejected-bg: #fbe3df;
+  --color-rejected-border: #de8c80;
+  --color-info: #2c6280;
+  --color-info-bg: #dceaf2;
+
+  --color-link: #6e4f0f;
+  --color-link-hover: #2a1d08;
+
+  /* --- Typography --- */
+  --font-display:
+    'Reggae One', 'Zen Maru Gothic', 'Hiragino Maru Gothic ProN',
+    'Yu Gothic', system-ui, sans-serif;
+  --font-sans:
+    'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Yu Gothic',
+    'Meiryo', system-ui, sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'Hiragino Sans', 'Yu Gothic', ui-monospace,
+    SFMono-Regular, monospace;
+
+  /* --- Radii --- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-stamp: 9999px;
+
+  /* --- Shadows (warm brown tints to match palette) --- */
+  --shadow-xs: 0 1px 2px 0 rgba(86, 61, 0, 0.06);
+  --shadow-sm: 0 1px 3px 0 rgba(86, 61, 0, 0.08), 0 1px 2px -1px rgba(86, 61, 0, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(86, 61, 0, 0.12), 0 2px 6px -2px rgba(86, 61, 0, 0.08);
+  --shadow-lg: 0 12px 32px -8px rgba(86, 61, 0, 0.18), 0 4px 12px -4px rgba(86, 61, 0, 0.10);
+  --shadow-inset: inset 0 2px 4px 0 rgba(86, 61, 0, 0.06);
+  --shadow-stamp: 0 2px 0 0 currentColor, inset 0 0 0 2px currentColor;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-bg: #1a130a;
+    --color-bg-grain: rgba(255, 240, 200, 0.015);
+    --color-surface: #251a0e;
+    --color-surface-2: #2f2113;
+    --color-surface-sunken: #1f1609;
+    --color-border: #3f2c17;
+    --color-border-strong: #5a4126;
+    --color-text: #faf4e8;
+    --color-text-muted: #c2a87a;
+    --color-text-faint: #8b6f43;
+
+    --color-accent: #e4b766;
+    --color-accent-hover: #f1c878;
+    --color-accent-pressed: #c89a45;
+    --color-accent-fg: #1a130a;
+    --color-accent-soft: #3f2c17;
+
+    --color-pending: #f0b760;
+    --color-pending-bg: #3a2810;
+    --color-pending-border: #7a5a20;
+    --color-approved: #9bcc6a;
+    --color-approved-bg: #1f2e15;
+    --color-approved-border: #4a6b2e;
+    --color-rejected: #e58a7a;
+    --color-rejected-bg: #3a1a14;
+    --color-rejected-border: #823c30;
+    --color-info: #7cb0d0;
+    --color-info-bg: #1a2b38;
+
+    --color-link: #e4b766;
+    --color-link-hover: #faf4e8;
+  }
+}
+
+/* --- Base layer --- */
+
+@layer base {
+  html {
+    color-scheme: light dark;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    /* Subtle paper-grain texture: tiny dots scattered very faintly */
+    background-image:
+      radial-gradient(circle at 25% 30%, var(--color-bg-grain) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 75% 70%, var(--color-bg-grain) 0.5px, transparent 0.5px);
+    background-size: 14px 14px, 19px 19px;
+    background-position: 0 0, 7px 7px;
+    min-height: 100svh;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  /* Form controls */
+  input[type='text'],
+  input[type='url'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  input[type='search'],
+  select,
+  textarea {
+    color: var(--color-text);
+    background-color: var(--color-surface);
+  }
+
+  input[type='file'] {
+    color: var(--color-text-muted);
+  }
+
+  input[type='file']::file-selector-button {
+    margin-right: 0.75rem;
+    border: 1px solid var(--color-border-strong);
+    background-color: var(--color-surface-2);
+    color: var(--color-text);
+    padding: 0.375rem 0.875rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+  }
+
+  input[type='file']::file-selector-button:hover {
+    background-color: var(--color-accent-soft);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: var(--radius-stamp);
+    border: 2px solid var(--color-bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-muted);
+  }
+}
+
+/* --- Component utilities --- */
+
+@layer components {
+  /* Workshop card: warm paper-stock with subtle border and shadow */
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+  .card-sunken {
+    background-color: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  /* Primary action — looks like a wood-handled stamp button */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease,
+      transform 80ms ease,
+      color 120ms ease;
+    text-decoration: none;
+    line-height: 1.25;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+    box-shadow: var(--shadow-sm), inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+    box-shadow: var(--shadow-md), inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+    background-color: var(--color-accent-pressed);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .btn-ghost {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
+
+  .btn-danger {
+    background-color: var(--color-rejected);
+    color: white;
+    box-shadow: var(--shadow-sm), inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-rejected) 88%, black);
+  }
+
+  .btn-success {
+    background-color: var(--color-approved);
+    color: white;
+    box-shadow: var(--shadow-sm), inset 0 -2px 0 0 rgba(0, 0, 0, 0.12);
+  }
+  .btn-success:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-approved) 88%, black);
+  }
+
+  .btn-sm {
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    border-radius: var(--radius-sm);
+  }
+  .btn-lg {
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
+  }
+
+  /* Inputs */
+  .field-label {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.375rem;
+    letter-spacing: 0.02em;
+  }
+  .field-label .required {
+    color: var(--color-rejected);
+    margin-left: 0.25rem;
+  }
+  .field-help {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
+  .field-error {
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--color-rejected);
+    font-weight: 500;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    display: block;
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+    box-shadow: var(--shadow-inset);
+  }
+  .input:hover,
+  .select:hover,
+  .textarea:hover {
+    border-color: var(--color-accent);
+  }
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent),
+      var(--shadow-inset);
+  }
+  .input.font-mono {
+    font-family: var(--font-mono);
+  }
+  .textarea {
+    line-height: 1.6;
+    resize: vertical;
+  }
+  .select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%236b5430' d='M6 8L0 0h12z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    padding-right: 2.5rem;
+  }
+
+  /* Status badge — ink stamp aesthetic */
+  .badge-stamp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    border-radius: var(--radius-stamp);
+    border: 2px solid currentColor;
+    background-color: var(--color-surface);
+    text-transform: uppercase;
+  }
+  .badge-pending {
+    color: var(--color-pending);
+    background-color: var(--color-pending-bg);
+    border-color: var(--color-pending-border);
+  }
+  .badge-approved {
+    color: var(--color-approved);
+    background-color: var(--color-approved-bg);
+    border-color: var(--color-approved-border);
+  }
+  .badge-rejected {
+    color: var(--color-rejected);
+    background-color: var(--color-rejected-bg);
+    border-color: var(--color-rejected-border);
+  }
+
+  /* Tab pills */
+  .tab {
+    padding: 0.5rem 1rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.875rem;
+    border-radius: var(--radius-stamp);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 120ms ease;
+  }
+  .tab:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-text);
+  }
+  .tab[data-active='true'] {
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Alerts */
+  .alert {
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  .alert-error {
+    background-color: var(--color-rejected-bg);
+    border-color: var(--color-rejected-border);
+    color: var(--color-rejected);
+  }
+  .alert-success {
+    background-color: var(--color-approved-bg);
+    border-color: var(--color-approved-border);
+    color: var(--color-approved);
+  }
+  .alert-info {
+    background-color: var(--color-info-bg);
+    border-color: var(--color-info);
+    color: var(--color-info);
+  }
+
+  /* Page heading */
+  .page-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 400;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .page-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+  }
+
+  /* Workshop sign — used on header logomark */
+  .logomark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    box-shadow: var(--shadow-sm), inset 0 -2px 0 0 rgba(0, 0, 0, 0.18);
+    transform: rotate(-2deg);
+  }
+
+  /* Inline emoji image (used by Mfm renderer) */
+  .mfm-emoji {
+    display: inline-block;
+    height: 1.4em;
+    vertical-align: middle;
+    margin: 0 0.1em;
+  }
+}

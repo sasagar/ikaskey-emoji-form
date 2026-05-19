@@ -68,49 +68,42 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
 
     case 'bold':
       return (
-        <strong>
+        <strong className="font-bold">
           <Children nodes={node.children} emojis={emojis} />
         </strong>
       );
 
     case 'italic':
       return (
-        <em>
+        <em className="italic">
           <Children nodes={node.children} emojis={emojis} />
         </em>
       );
 
     case 'strike':
       return (
-        <del>
+        <del className="line-through">
           <Children nodes={node.children} emojis={emojis} />
         </del>
       );
 
     case 'small':
       return (
-        <small style={{ opacity: 0.7 }}>
+        <small className="text-[0.85em] opacity-70">
           <Children nodes={node.children} emojis={emojis} />
         </small>
       );
 
     case 'center':
       return (
-        <div style={{ textAlign: 'center' }}>
+        <div className="text-center">
           <Children nodes={node.children} emojis={emojis} />
         </div>
       );
 
     case 'quote':
       return (
-        <blockquote
-          style={{
-            borderLeft: '3px solid #888',
-            margin: '0.25em 0',
-            paddingLeft: '0.75em',
-            color: '#555',
-          }}
-        >
+        <blockquote className="border-l-2 border-[var(--color-border-strong)] pl-3 my-1 text-[var(--color-text-muted)]">
           <Children nodes={node.children} emojis={emojis} />
         </blockquote>
       );
@@ -124,7 +117,12 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
 
     case 'link': {
       return (
-        <a href={node.props.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+        <a
+          href={node.props.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[var(--color-link)] underline-offset-2 hover:underline"
+        >
           <Children nodes={node.children} emojis={emojis} />
         </a>
       );
@@ -132,21 +130,26 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
 
     case 'url':
       return (
-        <a href={node.props.url} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+        <a
+          href={node.props.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[var(--color-link)] underline-offset-2 hover:underline break-all"
+        >
           {node.props.url}
         </a>
       );
 
     case 'mention':
       return (
-        <span className="text-blue-600">
+        <span className="font-mono text-[var(--color-accent)]">
           @{node.props.username}
           {node.props.host ? `@${node.props.host}` : ''}
         </span>
       );
 
     case 'hashtag':
-      return <span className="text-purple-600">#{node.props.hashtag}</span>;
+      return <span className="text-[var(--color-info)]">#{node.props.hashtag}</span>;
 
     case 'emojiCode': {
       const name = node.props.name;
@@ -158,16 +161,11 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
             alt={`:${name}:`}
             title={`:${name}:`}
             referrerPolicy="no-referrer"
-            style={{
-              display: 'inline-block',
-              height: '1.4em',
-              verticalAlign: 'middle',
-              margin: '0 0.1em',
-            }}
+            className="mfm-emoji"
           />
         );
       }
-      return <span style={{ opacity: 0.6 }}>:{name}:</span>;
+      return <span className="opacity-60">:{name}:</span>;
     }
 
     case 'unicodeEmoji':
@@ -175,15 +173,15 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
 
     case 'inlineCode':
       return (
-        <code className="rounded bg-gray-100 px-1 font-mono text-sm">
+        <code className="rounded bg-[var(--color-surface-2)] border border-[var(--color-border)] px-1 font-mono text-[0.875em]">
           {node.props.code}
         </code>
       );
 
     case 'blockCode':
       return (
-        <pre className="overflow-x-auto rounded bg-gray-100 p-2 text-sm">
-          <code>{node.props.code}</code>
+        <pre className="overflow-x-auto rounded-md bg-[var(--color-surface-2)] border border-[var(--color-border)] p-3 text-sm">
+          <code className="font-mono">{node.props.code}</code>
         </pre>
       );
 
@@ -199,7 +197,7 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
           href={`https://www.google.com/search?q=${encodeURIComponent(node.props.query)}`}
           target="_blank"
           rel="noreferrer"
-          className="text-blue-600 underline"
+          className="text-[var(--color-link)] underline-offset-2 hover:underline"
         >
           {node.props.query} (検索)
         </a>
@@ -207,19 +205,19 @@ function Node({ node, emojis }: { node: MfmNode; emojis: EmojiMap }) {
 
     case 'fn': {
       const fname = node.props.name;
-      // 簡易対応: x2/x3/x4 倍率、jelly/bounce/spin はアニメ無しで縮小 / 装飾だけ
-      const style: React.CSSProperties = {};
-      if (fname === 'x2') style.fontSize = '200%';
-      if (fname === 'x3') style.fontSize = '400%';
-      if (fname === 'x4') style.fontSize = '600%';
-      if (fname === 'tada') style.fontSize = '200%';
-      if (fname === 'rainbow') {
-        style.background = 'linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet)';
-        style.WebkitBackgroundClip = 'text';
-        style.color = 'transparent';
+      // 静的環境では装飾だけ (アニメは省略)
+      let cls = '';
+      let style: React.CSSProperties | undefined;
+      if (fname === 'x2') style = { fontSize: '200%' };
+      else if (fname === 'x3') style = { fontSize: '400%' };
+      else if (fname === 'x4') style = { fontSize: '600%' };
+      else if (fname === 'tada') style = { fontSize: '200%' };
+      else if (fname === 'rainbow') {
+        cls =
+          'bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 bg-clip-text text-transparent';
       }
       return (
-        <span style={style}>
+        <span className={cls} style={style}>
           <Children nodes={node.children} emojis={emojis} />
         </span>
       );
