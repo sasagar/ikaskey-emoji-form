@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Mfm } from './mfm';
 import { StatusStamp } from './status-stamp';
+import { formatDateTime } from '../lib/datetime';
 
 type Application = {
   id: number;
@@ -247,7 +248,7 @@ export function AdminDetail({ id }: { id: number }) {
                 )}
               </dd>
               <dt className="text-[var(--color-text-faint)]">申請日時</dt>
-              <dd>{new Date(app.created_at).toLocaleString('ja-JP')}</dd>
+              <dd>{formatDateTime(app.created_at)}</dd>
               {app.source_type === 'remote_copy' ? (
                 <>
                   <dt className="text-[var(--color-text-faint)]">取り込み元</dt>
@@ -266,7 +267,7 @@ export function AdminDetail({ id }: { id: number }) {
                   <dt className="text-[var(--color-text-faint)]">決裁</dt>
                   <dd>
                     by <span className="font-mono">@{app.decided_by_username}</span> at{' '}
-                    {app.decided_at ? new Date(app.decided_at).toLocaleString('ja-JP') : '?'}
+                    {formatDateTime(app.decided_at)}
                   </dd>
                 </>
               )}

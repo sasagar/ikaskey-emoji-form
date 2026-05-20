@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Mfm } from './mfm';
 import { StatusStamp, statusLabel } from './status-stamp';
+import { formatDateTime } from '../lib/datetime';
 
 type Me =
   | { loggedIn: true; userId: string; username: string; name: string | null }
@@ -98,7 +99,7 @@ export function MyList() {
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-[var(--color-text-muted)]">
               <dt className="text-[var(--color-text-faint)]">申請日時</dt>
-              <dd>{new Date(a.created_at).toLocaleString('ja-JP')}</dd>
+              <dd>{formatDateTime(a.created_at)}</dd>
               <dt className="text-[var(--color-text-faint)]">カテゴリ</dt>
               <dd>
                 {a.category ?? <span className="italic">未指定</span>}
@@ -127,7 +128,7 @@ export function MyList() {
                 {(a.decided_by_username || a.decided_at) && (
                   <span className="text-[var(--color-text-faint)] text-xs">
                     {a.decided_by_username && `by @${a.decided_by_username}`}
-                    {a.decided_at && ` / ${new Date(a.decided_at).toLocaleString('ja-JP')}`}
+                    {a.decided_at && ` / ${formatDateTime(a.decided_at)}`}
                   </span>
                 )}
               </p>
