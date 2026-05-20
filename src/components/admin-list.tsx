@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Mfm } from './mfm';
 import { StatusStamp } from './status-stamp';
+import { formatDateTime } from '../lib/datetime';
 
 type Application = {
   id: number;
@@ -318,7 +319,7 @@ export function AdminList() {
                     </>
                   ) : null}{' '}
                   <span className="text-[var(--color-text-faint)]">·</span>{' '}
-                  {new Date(a.created_at).toLocaleString('ja-JP')}
+                  {formatDateTime(a.created_at)}
                 </p>
                 {a.source_type === 'remote_copy' && (
                   <p className="text-xs text-[var(--color-info)]">
